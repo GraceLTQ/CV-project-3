@@ -6,13 +6,59 @@ from scipy import ndimage, signal
 
 ############### ---------- Basic Image Processing ------ ##############
 
-### TODO 1: Read an Image and convert it into a floating point array with values between 0 and 1. You can assume a color image
+# TODO 1: Read an Image and convert it into a floating point array with values between 0 and 1. You can assume a color image
 def imread(filename):
-    pass
+    # Open the image file using PIL
+    img = Image.open(filename)
 
-### TODO 2: Create a gaussian filter of size k x k and with standard deviation sigma
+    # Convert the image to a numpy array
+    img_array = np.array(img)
+
+    # Convert the numpy array to float
+    img_float = img_array.astype(np.float32)
+
+    # Normalize the image data to 0-1 range
+    img_normalized = img_float / 255.0
+
+    return img_normalized
+
+# TODO 2: Create a gaussian filter of size k x k and with standard deviation sigma
 def gaussian_filter(k, sigma):
-    pass
+    # Check if k is odd
+    if k % 2 == 0:
+        raise ValueError("k must be an odd number.")
+
+    # Create an (k, k) array to hold the filter values
+    filter = np.zeros((k, k))
+
+    # Compute the center point of the filter
+    center = k // 2
+
+    # Compute the Gaussian function for each element in the filter
+    for i in range(k):
+        for j in range(k):
+            # Calculate the squared distance from the center
+            x = i - center
+            y = j - center
+            # Gaussian formula
+            filter[i, j] = np.exp(-(x**2 + y**2) / (2 * sigma**2))
+
+    # Normalize the filter so that the sum is 1
+    filter /= filter.sum()
+
+    return filter
+
+    # # Create an array to hold the filter
+    # ax = np.linspace(-(k - 1) / 2., (k - 1) / 2., k)
+    # xx, yy = np.meshgrid(ax, ax)
+
+    # # Calculate the Gaussian matrix
+    # kernel = np.exp(-0.5 * (np.square(xx) + np.square(yy)) / np.square(sigma))
+
+    # # Normalize the kernel so that the sum of all its values is 1
+    # kernel /= np.sum(kernel)
+
+    # return kernel
 
 ### TODO 3: Compute the image gradient. 
 ### First convert the image to grayscale by using the formula:
