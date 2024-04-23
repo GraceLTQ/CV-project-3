@@ -20,6 +20,10 @@ def imread(filename):
     # Normalize the image data to 0-1 range
     img_normalized = img_float / 255.0
 
+    if len(img_normalized[0,0]) != 3:
+        img_normalized = img_normalized[:,:,0:3]
+
+
     return img_normalized
 
 
@@ -40,24 +44,21 @@ def gaussian_filter(k, sigma):
 # Return the gradient magnitude and the gradient orientation (use arctan2)
 def gradient(img):
     # Convert to grayscale if it's a color image
-    if img.ndim == 3 and img.shape[2] == 3:
-        grayscale = 0.2125 * img[:, :, 0] + 0.7154 * \
-            img[:, :, 1] + 0.0721 * img[:, :, 2]
-    else:
-        grayscale = img
+    grayscale = 0.2125 * img[:, :, 0] + 0.7154 * \
+        img[:, :, 1] + 0.0721 * img[:, :, 2]
 
     # Apply Gaussian smoothing
     gaussian = gaussian_filter(5, 1)
-    smoothed = signal.convolve2d(
-        grayscale, gaussian, mode='same', boundary='fill', fillvalue=0)
+    smoothed = signal.convolve(
+        grayscale, gaussian, mode='same')
 
     # Define derivative kernels as 2D arrays
     kernel_x = np.array([[0.5, 0, -0.5]])
     kernel_y = np.array([[0.5], [0], [-0.5]])
 
     # Convolve to find the derivatives, using 'same' to keep the original image size
-    dx = signal.convolve2d(smoothed, kernel_x, mode='same')
-    dy = signal.convolve2d(smoothed, kernel_y, mode='same')
+    dx = signal.convolve(smoothed, kernel_x, mode='same')
+    dy = signal.convolve(smoothed, kernel_y, mode='same')
 
     # Calculate the magnitude and orientation of gradients
     magnitude = np.sqrt(dx ** 2 + dy ** 2)
@@ -115,12 +116,6 @@ def hough_voting(gradmag, gradori, thetas, cs, thresh1, thresh2, thresh3):
 
     for t_i, t in enumerate(thetas):
         for c_i, c in enumerate(cs):
-            # d = check_distance_from_line(x_indices, y_indices, t, c, thresh2)
-            # i = np.where(d)   # indices of d where the entry is True
-            # y_indices = y_indices[i] # y_indices = array of y_coord of pixels that satisfy condition i and ii
-            # x_indices = x_indices[i]
-            # x = np.abs(gradori[x_indices,y_indices] - t)
-            # output[t_i,c_i] = np.sum(x < thresh3)
             near_line = check_distance_from_line (x_indices, y_indices, t, c, thresh2)
             valid_orientation = np.abs(gradori[y_indices, x_indices]-t) < thresh3
 
@@ -134,7 +129,24 @@ def hough_voting(gradmag, gradori, thetas, cs, thresh1, thresh2, thresh3):
 # (b) its value is the maximum in a (nbhd x nbhd) neighborhood in the votes array.
 # Return a list of (theta, c) pairs
 def localmax(votes, thetas, cs, thresh, nbhd):
-    pass
+    output=[]
+    y_indices, x_indices = np.where(votes>thresh)
+
+    for i in range(len(y_indices)):
+        y = y_indices[i]
+        x = x_indices[i]
+
+        l = x - nbhd//2 if x - nbhd//2 >= 0 else 0
+        r = x + nbhd//2 + 1 if x + nbhd//2 + 1 <= len(votes[0]) else len(votes[0])
+        t = y - nbhd//2 if y - nbhd//2 >= 0 else 0
+        b = y + nbhd//2 + 1 if y + nbhd//2 + 1 <= len(votes) else len(votes)
+
+
+        if votes[y, x] == np.max(votes[t:b, l:r]):
+            output.append((thetas[y], cs[x]))
+
+
+    return output
 
 
 # Final product: Identify lines using the Hough transform
