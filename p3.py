@@ -83,7 +83,19 @@ def check_distance_from_line(x, y, theta, c, thresh):
 # TODO 5: Write a function to draw a set of lines on the image. The `lines` input is a list of (theta, c) pairs. Each line must appear as red on the final image
 # where every pixel which is less than thresh units away from the line should be colored red
 def draw_lines(img, lines, thresh):
-    pass
+    i = img.copy()
+    h,w,_ = i.shape
+    indices = np.arange(h*w)
+    y,x = np.unravel_index(indices,(h,w)) 
+    for (t,c) in lines:
+        d = check_distance_from_line(x, y, t, c, thresh)
+        d = np.reshape(d,(h,w))
+        r,c = np.where(d)
+        i[r,c,:] = [1,0,0]
+    return i
+
+        
+
 
 
 # TODO 6: Do Hough voting. You get as input the gradient magnitude and the gradient orientation, as well as a set of possible theta values and a set of possible c
