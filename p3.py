@@ -20,9 +20,8 @@ def imread(filename):
     # Normalize the image data to 0-1 range
     img_normalized = img_float / 255.0
 
-    if len(img_normalized[0,0]) != 3:
-        img_normalized = img_normalized[:,:,0:3]
-
+    if len(img_normalized[0, 0]) != 3:
+        img_normalized = img_normalized[:, :, 0:3]
 
     return img_normalized
 
@@ -35,6 +34,22 @@ def gaussian_filter(k, sigma):
     kernel /= np.sum(kernel)
     return kernel
 
+#     # Ensure k is an odd number
+#     if k % 2 == 0:
+#         raise ValueError("k must be an odd number.")
+
+#     # Create a range of values from -m to m, where m is the floor of k/2
+#     m = k // 2
+#     x, y = np.meshgrid(np.linspace(-m, m, k), np.linspace(-m, m, k))
+
+#     # Calculate the Gaussian function
+#     # The constant factor (1/(2*np.pi*sigma**2)) is not necessary for normalized filter
+#     gaussian = np.exp(-(x**2 + y**2) / (2 * sigma**2))
+
+#     # Normalize the filter so that the sum is 1
+#     gaussian /= gaussian.sum()
+
+#     return gaussian
 
 # TODO 3: Compute the image gradient.
 # First convert the image to grayscale by using the formula:
@@ -66,6 +81,37 @@ def gradient(img):
 
     return magnitude, orientation
 
+#     # Convert image to grayscale
+#     # img should be a numpy array with shape (height, width, 3) with RGB channels
+#     if img.ndim != 3 or img.shape[2] != 3:
+#         raise ValueError("Input image must be a color image with three channels (RGB).")
+    
+#     # Formula to convert RGB to grayscale
+#     grayscale = 0.2125 * img[:, :, 0] + 0.7154 * img[:, :, 1] + 0.0721 * img[:, :, 2]
+
+#     # Create a 5x5 Gaussian filter with sigma = 1
+#     gaussian = gaussian_filter(5, 1)
+
+#     # Apply Gaussian filter to smooth the image
+#     smoothed = signal.convolve(grayscale, gaussian, mode='same')
+
+#     # Define kernels for finding derivatives
+#     # Horizontal gradient (X derivative)
+#     kernel_x = np.array([[0.5, 0, -0.5]])
+
+#     # Vertical gradient (Y derivative)
+#     kernel_y = np.array([[0.5], [0], [-0.5]])
+
+#     # Compute gradients in the x and y directions
+#     grad_x = signal.convolve(smoothed, kernel_x, mode='same')
+#     grad_y = signal.convolve(smoothed, kernel_y, mode='same')
+
+#     # Compute gradient magnitude and orientation
+#     magnitude = np.sqrt(grad_x**2 + grad_y**2)
+#     orientation = np.arctan2(grad_y, grad_x)
+
+#     return magnitude, orientation
+
 
 # ----------------Line detection----------------
 
@@ -75,28 +121,45 @@ def gradient(img):
 # Return a boolean array that indicates True for pixels whose distance is less than the threshold
 def check_distance_from_line(x, y, theta, c, thresh):
     d = np.abs(np.cos(theta)*x + np.sin(theta)*y + c)
-    return d<thresh
-
-
-    
+    return d < thresh
 
 
 # TODO 5: Write a function to draw a set of lines on the image. The `lines` input is a list of (theta, c) pairs. Each line must appear as red on the final image
 # where every pixel which is less than thresh units away from the line should be colored red
 def draw_lines(img, lines, thresh):
     i = img.copy()
-    h,w,_ = i.shape
+    h, w, _ = i.shape
     indices = np.arange(h*w)
-    y,x = np.unravel_index(indices,(h,w)) 
-    for (t,c) in lines:
+    y, x = np.unravel_index(indices, (h, w))
+    for (t, c) in lines:
         d = check_distance_from_line(x, y, t, c, thresh)
-        d = np.reshape(d,(h,w))
-        r,c = np.where(d)
-        i[r,c,:] = [1,0,0]
+        d = np.reshape(d, (h, w))
+        r, c = np.where(d)
+        i[r, c, :] = [1, 0, 0]
     return i
 
-        
+#     # Ensure the image is in the right format, expecting a color image
+#     if img.ndim != 3 or img.shape[2] != 3:
+#         raise ValueError("Input image must be a color image with three channels (RGB).")
 
+#     # Make a copy of the image to modify it
+#     output_img = np.copy(img)
+
+#     # Get image dimensions
+#     height, width, _ = img.shape
+
+#     # Iterate over all pixels in the image
+#     for y in range(height):
+#         for x in range(width):
+#             for theta, c in lines:
+#                 # Calculate the distance from the current pixel to the line described by theta and c
+#                 distance = abs(x * np.cos(theta) + y * np.sin(theta) + c) / np.sqrt(np.cos(theta)**2 + np.sin(theta)**2)
+
+#                 # If the distance is less than the threshold, set the pixel color to red
+#                 if distance < thresh:
+#                     output_img[y, x] = [1, 0, 0]  # Red in [0, 1] normalized RGB
+
+#     return output_img
 
 
 # TODO 6: Do Hough voting. You get as input the gradient magnitude and the gradient orientation, as well as a set of possible theta values and a set of possible c
@@ -109,19 +172,21 @@ def hough_voting(gradmag, gradori, thetas, cs, thresh1, thresh2, thresh3):
     num_c = len(cs)
 
     # find indices of entries in gradmag that are > thresh1
-    y_indices, x_indices = np.where(gradmag>thresh1)
+    y_indices, x_indices = np.where(gradmag > thresh1)
 
     # output[a][b] = number votes for line with theta = thetas[a] and c = cs[b]
-    output = np.zeros((num_t,num_c))
+    output = np.zeros((num_t, num_c))
 
     for t_i, t in enumerate(thetas):
         for c_i, c in enumerate(cs):
-            near_line = check_distance_from_line (x_indices, y_indices, t, c, thresh2)
-            valid_orientation = np.abs(gradori[y_indices, x_indices]-t) < thresh3
+            near_line = check_distance_from_line(
+                x_indices, y_indices, t, c, thresh2)
+            valid_orientation = np.abs(
+                gradori[y_indices, x_indices]-t) < thresh3
 
             votes = np.sum(near_line & valid_orientation)
-            output[t_i,c_i] = votes
-        
+            output[t_i, c_i] = votes
+
     return output
 
 
@@ -129,24 +194,54 @@ def hough_voting(gradmag, gradori, thetas, cs, thresh1, thresh2, thresh3):
 # (b) its value is the maximum in a (nbhd x nbhd) neighborhood in the votes array.
 # Return a list of (theta, c) pairs
 def localmax(votes, thetas, cs, thresh, nbhd):
-    output=[]
-    y_indices, x_indices = np.where(votes>thresh)
+    # output = []
+    # y_indices, x_indices = np.where(votes > thresh)
 
-    for i in range(len(y_indices)):
-        y = y_indices[i]
-        x = x_indices[i]
+    # for i in range(len(y_indices)):
+    #     y = y_indices[i]
+    #     x = x_indices[i]
 
-        l = x - nbhd//2 if x - nbhd//2 >= 0 else 0
-        r = x + nbhd//2 + 1 if x + nbhd//2 + 1 <= len(votes[0]) else len(votes[0])
-        t = y - nbhd//2 if y - nbhd//2 >= 0 else 0
-        b = y + nbhd//2 + 1 if y + nbhd//2 + 1 <= len(votes) else len(votes)
+    #     l = x - nbhd//2 if x - nbhd//2 >= 0 else 0
+    #     r = x + nbhd//2 + 1 if x + nbhd//2 + \
+    #         1 <= len(votes[0]) else len(votes[0])
+    #     t = y - nbhd//2 if y - nbhd//2 >= 0 else 0
+    #     b = y + nbhd//2 + 1 if y + nbhd//2 + 1 <= len(votes) else len(votes)
 
+    #     if votes[y, x] == np.max(votes[t:b, l:r]):
+    #         output.append((thetas[y], cs[x]))
 
-        if votes[y, x] == np.max(votes[t:b, l:r]):
-            output.append((thetas[y], cs[x]))
+    # return output
 
+    # Initialize a list to store the coordinates of the local maxima
+    local_maxima = []
 
-    return output
+    # Adjust neighborhood size for edge cases
+    nbhd_radius = nbhd // 2
+
+    # Get dimensions of the votes array
+    num_thetas, num_cs = votes.shape
+
+    # Iterate through each entry in the votes matrix
+    for i in range(num_thetas):
+        for j in range(num_cs):
+            # Only consider votes greater than the threshold
+            if votes[i, j] > thresh:
+                # Define the neighborhood range
+                min_i = max(i - nbhd_radius, 0)
+                max_i = min(i + nbhd_radius + 1, num_thetas)
+                min_j = max(j - nbhd_radius, 0)
+                max_j = min(j + nbhd_radius + 1, num_cs)
+
+                # Extract the neighborhood
+                neighborhood = votes[min_i:max_i, min_j:max_j]
+
+                # Check if the current vote is the maximum in its neighborhood
+                if votes[i, j] == np.max(neighborhood):
+                    # If it's the highest and it's uniquely the highest in the neighborhood
+                    if np.count_nonzero(neighborhood == votes[i, j]) == 1:
+                        local_maxima.append((thetas[i], cs[j]))
+
+    return local_maxima
 
 
 # Final product: Identify lines using the Hough transform
