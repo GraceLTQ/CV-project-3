@@ -28,28 +28,24 @@ def imread(filename):
 
 # TODO 2: Create a gaussian filter of size k x k and with standard deviation sigma
 def gaussian_filter(k, sigma):
-    ax = np.arange(-k // 2 + 1., k // 2 + 1.)
-    xx, yy = np.meshgrid(ax, ax)
-    kernel = np.exp(-0.5 * (np.square(xx) + np.square(yy)) / np.square(sigma))
-    kernel /= np.sum(kernel)
-    return kernel
+    #     ax = np.arange(-k // 2 + 1., k // 2 + 1.)
+    #     xx, yy = np.meshgrid(ax, ax)
+    #     kernel = np.exp(-0.5 * (np.square(xx) + np.square(yy)) / np.square(sigma))
+    #     kernel /= np.sum(kernel)
+    #     return kernel
 
-#     # Ensure k is an odd number
-#     if k % 2 == 0:
-#         raise ValueError("k must be an odd number.")
+    center = k // 2
+    filter = np.zeros((k, k))
 
-#     # Create a range of values from -m to m, where m is the floor of k/2
-#     m = k // 2
-#     x, y = np.meshgrid(np.linspace(-m, m, k), np.linspace(-m, m, k))
+    for i in range(k):
+        for j in range(k):
+            x = abs(center - j)
+            y = abs(center - i)
+            filter[i][j] = np.exp(-(x**2 + y**2) / (2 * (sigma**2)))
 
-#     # Calculate the Gaussian function
-#     # The constant factor (1/(2*np.pi*sigma**2)) is not necessary for normalized filter
-#     gaussian = np.exp(-(x**2 + y**2) / (2 * sigma**2))
+    filter /= np.sum(filter)
+    return filter
 
-#     # Normalize the filter so that the sum is 1
-#     gaussian /= gaussian.sum()
-
-#     return gaussian
 
 # TODO 3: Compute the image gradient.
 # First convert the image to grayscale by using the formula:
@@ -58,59 +54,45 @@ def gaussian_filter(k, sigma):
 # Convolve with [0.5, 0, -0.5] to get the X derivative on each channel and convolve with [[0.5],[0],[-0.5]] to get the Y derivative on each channel. (use scipy.signal.convolve)
 # Return the gradient magnitude and the gradient orientation (use arctan2)
 def gradient(img):
+    #     # Convert to grayscale if it's a color image
+    #     grayscale = 0.2125 * img[:, :, 0] + 0.7154 * \
+    #         img[:, :, 1] + 0.0721 * img[:, :, 2]
+
+    #     # Apply Gaussian smoothing
+    #     gaussian = gaussian_filter(5, 1)
+    #     smoothed = signal.convolve(
+    #         grayscale, gaussian, mode='same')
+
+    #     # Define derivative kernels as 2D arrays
+    #     kernel_x = np.array([[0.5, 0, -0.5]])
+    #     kernel_y = np.array([[0.5], [0], [-0.5]])
+
+    #     # Convolve to find the derivatives, using 'same' to keep the original image size
+    #     dx = signal.convolve(smoothed, kernel_x, mode='same')
+    #     dy = signal.convolve(smoothed, kernel_y, mode='same')
+
+    #     # Calculate the magnitude and orientation of gradients
+    #     magnitude = np.sqrt(dx ** 2 + dy ** 2)
+    #     orientation = np.arctan2(dy, dx)
+
+    #     return magnitude, orientation
+
     # Convert to grayscale if it's a color image
-    grayscale = 0.2125 * img[:, :, 0] + 0.7154 * \
-        img[:, :, 1] + 0.0721 * img[:, :, 2]
+    Y = 0.2125 * img[:, :, 0] + 0.7154 * img[:, :, 1] + 0.0721 * img[:, :, 2]
 
     # Apply Gaussian smoothing
-    gaussian = gaussian_filter(5, 1)
-    smoothed = signal.convolve(
-        grayscale, gaussian, mode='same')
-
-    # Define derivative kernels as 2D arrays
-    kernel_x = np.array([[0.5, 0, -0.5]])
-    kernel_y = np.array([[0.5], [0], [-0.5]])
+    smoothed = signal.convolve(Y, gaussian_filter(5, 1), mode="same")
 
     # Convolve to find the derivatives, using 'same' to keep the original image size
-    dx = signal.convolve(smoothed, kernel_x, mode='same')
-    dy = signal.convolve(smoothed, kernel_y, mode='same')
+
+    dx = signal.convolve(smoothed, np.array([[0.5, 0, -0.5]]), mode="same")
+    dy = signal.convolve(smoothed, np.array([[0.5], [0], [-0.5]]), mode="same")
 
     # Calculate the magnitude and orientation of gradients
-    magnitude = np.sqrt(dx ** 2 + dy ** 2)
+    magnitude = np.sqrt(dx**2 + dy**2)
     orientation = np.arctan2(dy, dx)
 
     return magnitude, orientation
-
-#     # Convert image to grayscale
-#     # img should be a numpy array with shape (height, width, 3) with RGB channels
-#     if img.ndim != 3 or img.shape[2] != 3:
-#         raise ValueError("Input image must be a color image with three channels (RGB).")
-    
-#     # Formula to convert RGB to grayscale
-#     grayscale = 0.2125 * img[:, :, 0] + 0.7154 * img[:, :, 1] + 0.0721 * img[:, :, 2]
-
-#     # Create a 5x5 Gaussian filter with sigma = 1
-#     gaussian = gaussian_filter(5, 1)
-
-#     # Apply Gaussian filter to smooth the image
-#     smoothed = signal.convolve(grayscale, gaussian, mode='same')
-
-#     # Define kernels for finding derivatives
-#     # Horizontal gradient (X derivative)
-#     kernel_x = np.array([[0.5, 0, -0.5]])
-
-#     # Vertical gradient (Y derivative)
-#     kernel_y = np.array([[0.5], [0], [-0.5]])
-
-#     # Compute gradients in the x and y directions
-#     grad_x = signal.convolve(smoothed, kernel_x, mode='same')
-#     grad_y = signal.convolve(smoothed, kernel_y, mode='same')
-
-#     # Compute gradient magnitude and orientation
-#     magnitude = np.sqrt(grad_x**2 + grad_y**2)
-#     orientation = np.arctan2(grad_y, grad_x)
-
-#     return magnitude, orientation
 
 
 # ----------------Line detection----------------
@@ -194,23 +176,25 @@ def hough_voting(gradmag, gradori, thetas, cs, thresh1, thresh2, thresh3):
 # (b) its value is the maximum in a (nbhd x nbhd) neighborhood in the votes array.
 # Return a list of (theta, c) pairs
 def localmax(votes, thetas, cs, thresh, nbhd):
-    # output = []
-    # y_indices, x_indices = np.where(votes > thresh)
+    #     output = []
+    #     nbhd_radius = nbhd // 2
+    #     y_indices, x_indices = np.where(votes > thresh)
 
-    # for i in range(len(y_indices)):
-    #     y = y_indices[i]
-    #     x = x_indices[i]
+    #     for i in range(len(y_indices)):
+    #         y = y_indices[i]
+    #         x = x_indices[i]
 
-    #     l = x - nbhd//2 if x - nbhd//2 >= 0 else 0
-    #     r = x + nbhd//2 + 1 if x + nbhd//2 + \
-    #         1 <= len(votes[0]) else len(votes[0])
-    #     t = y - nbhd//2 if y - nbhd//2 >= 0 else 0
-    #     b = y + nbhd//2 + 1 if y + nbhd//2 + 1 <= len(votes) else len(votes)
+    #         l = max(x - nbhd_radius, 0)
+    #         r = min(x + nbhd_radius + 1, len(votes[0]))
+    #         t = max(y - nbhd_radius, 0)
+    #         b = min(y + nbhd_radius + 1, len(votes))
 
-    #     if votes[y, x] == np.max(votes[t:b, l:r]):
-    #         output.append((thetas[y], cs[x]))
+    #         neighborhood = votes[t:b, l:r]
 
-    # return output
+    #         if votes[y, x] == np.max(neighborhood):
+    #             output.append((thetas[y], cs[x]))
+
+    #     return output
 
     # Initialize a list to store the coordinates of the local maxima
     local_maxima = []
@@ -218,19 +202,16 @@ def localmax(votes, thetas, cs, thresh, nbhd):
     # Adjust neighborhood size for edge cases
     nbhd_radius = nbhd // 2
 
-    # Get dimensions of the votes array
-    num_thetas, num_cs = votes.shape
-
     # Iterate through each entry in the votes matrix
-    for i in range(num_thetas):
-        for j in range(num_cs):
+    for i in range(len(thetas)):
+        for j in range(len(cs)):
             # Only consider votes greater than the threshold
             if votes[i, j] > thresh:
                 # Define the neighborhood range
                 min_i = max(i - nbhd_radius, 0)
-                max_i = min(i + nbhd_radius + 1, num_thetas)
+                max_i = min(i + nbhd_radius + 1, votes.shape[0])
                 min_j = max(j - nbhd_radius, 0)
-                max_j = min(j + nbhd_radius + 1, num_cs)
+                max_j = min(j + nbhd_radius + 1, votes.shape[1])
 
                 # Extract the neighborhood
                 neighborhood = votes[min_i:max_i, min_j:max_j]
@@ -238,8 +219,8 @@ def localmax(votes, thetas, cs, thresh, nbhd):
                 # Check if the current vote is the maximum in its neighborhood
                 if votes[i, j] == np.max(neighborhood):
                     # If it's the highest and it's uniquely the highest in the neighborhood
-                    if np.count_nonzero(neighborhood == votes[i, j]) == 1:
-                        local_maxima.append((thetas[i], cs[j]))
+                    #                     if np.count_nonzero(neighborhood == votes[i, j]) == 1:
+                    local_maxima.append((thetas[i], cs[j]))
 
     return local_maxima
 
